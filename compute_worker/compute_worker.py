@@ -449,7 +449,9 @@ class Run:
                 )
             )
         except Exception as e:
-            logger.error("This error might result in a Execution Time Exceeded error" + e)
+            logger.error(
+                "This error might result in a Execution Time Exceeded error" + e
+            )
             if os.environ.get("LOG_LEVEL", "info").lower() == "debug":
                 logger.exception(e)
 
@@ -978,6 +980,25 @@ class Run:
             if kind == "ingestion"
             else self.program_container_name
         )
+        # Disable or not the competition container access to Internet (False by default)
+        container_network_status = os.environ.get(
+            "COMPETITION_CONTAINER_NETWORK_DISABLED", "False"
+        ).title()
+
+        # HTTP and HTTPS proxy for the competition container if needed
+        competition_container_proxy_http = os.environ.get(
+            "COMPETITION_CONTAINER_HTTP_PROXY", ""
+        )
+        competition_container_proxy_http = (
+            "http_proxy=" + competition_container_proxy_http
+        )
+
+        competition_container_proxy_https = os.environ.get(
+            "COMPETITION_CONTAINER_HTTPS_PROXY", ""
+        )
+        competition_container_proxy_https = (
+            "https_proxy=" + competition_container_proxy_https
+        )
         container = client.create_container(
             self.container_image,
             name=container_name,
@@ -986,7 +1007,12 @@ class Run:
             volumes=volumes_host,
             command=command,
             working_dir="/app/program",
-            environment=["PYTHONUNBUFFERED=1"],
+            environment=[
+                "PYTHONUNBUFFERED=1",
+                competition_container_proxy_http,
+                competition_container_proxy_https,
+            ],
+            network_disabled=container_network_status,
         )
         logger.debug("Created container : " + str(container))
         logger.info("Volume configuration of the container: ")
